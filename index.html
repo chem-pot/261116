@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔥 불꽃 반응 시뮬레이션</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #0a0a1a;
+            color: #fff;
+            font-family: 'Malgun Gothic', sans-serif;
+            min-height: 100vh;
+            overflow-x: auto;
+        }
+
+        h1 {
+            text-align: center;
+            padding: 20px;
+            font-size: 28px;
+            color: #ffdd44;
+            text-shadow: 0 0 20px #ffaa00;
+            letter-spacing: 2px;
+        }
+        h1 span {
+            font-size: 14px;
+            color: #aaa;
+            display: block;
+            margin-top: 5px;
+            letter-spacing: 1px;
+        }
+
+        /* ===== 불꽃 디스플레이 ===== */
+        #flame-display {
+            width: 300px;
+            height: 200px;
+            margin: 10px auto;
+            border-radius: 15px;
+            background: #111;
+            border: 2px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+        #flame-display.active {
+            box-shadow: 0 0 60px var(--flame-color, #fff),
+                        0 0 120px var(--flame-color, #fff),
+                        inset 0 0 60px rgba(255,255,255,0.1);
+        }
+        .flame-container { position: relative; width: 80px; height: 120px; display: none; }
+        .flame-container.active { display: block; }
+        .flame {
+            position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            width: 50px; height: 80px;
+            border-radius: 50% 50% 20% 20%;
+            animation: flicker 0.15s infinite alternate;
+        }
+        .flame-inner {
+            position: absolute; bottom: 5px; left: 50%;
+            transform: translateX(-50%);
+            width: 30px; height: 50px;
+            border-radius: 50% 50% 20% 20%;
+            opacity: 0.8;
+        }
+        .flame-core {
+            position: absolute; bottom: 10px; left: 50%;
+            transform: translateX(-50%);
+            width: 15px; height: 25px;
+            border-radius: 50% 50% 20% 20%;
+            background: rgba(255,255,255,0.9);
+        }
+        @keyframes flicker {
+            0%   { transform: translateX(-50%) scaleX(1) scaleY(1); }
+            25%  { transform: translateX(-48%) scaleX(0.95) scaleY(1.05); }
+            50%  { transform: translateX(-52%) scaleX(1.05) scaleY(0.95); }
+            75%  { transform: translateX(-49%) scaleX(0.97) scaleY(1.03); }
+            100% { transform: translateX(-51%) scaleX(1.02) scaleY(0.98); }
+        }
+        .spark {
+            position: absolute;
+            width: 4px; height: 4px;
+            border-radius: 50%;
+            animation: spark-fly 1s ease-out infinite;
+        }
+        @keyframes spark-fly {
+            0%   { bottom: 80px; opacity: 1; transform: translateX(0); }
+            100% { bottom: 160px; opacity: 0; transform: translateX(var(--spark-x, 20px)); }
+        }
+        #flame-info { text-align: center; padding: 5px; z-index: 10; }
+        #flame-element-name { font-size: 22px; font-weight: bold; color: #fff; text-shadow: 0 0 10px var(--flame-color, #fff); }
+        #flame-color-name { font-size: 14px; color: #ccc; margin-top: 3px; }
+        #default-text { color: #555; font-size: 14px; text-align: center; }
+
+        /* ===== 초기화 버튼 ===== */
+        #controls { text-align: center; margin: 10px 0; }
+        #reset-btn {
+            padding: 10px 30px;
+            background: linear-gradient(135deg, #333, #555);
+            color: #fff;
+            border: 2px solid #777;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Malgun Gothic', sans-serif;
+        }
+        #reset-btn:hover {
+            background: linear-gradient(135deg, #555, #777);
+            border-color: #aaa;
+            box-shadow: 0 0 15px rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+
+        /* ===== 불꽃 반응 원소 범례 ===== */
+        #flame-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .legend-item {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 12px; color: #ccc;
+        }
+        .legend-color {
+            width: 14px; height: 14px; border-radius: 3px;
+        }
+
+        /* ===== 불꽃 반응 표 ===== */
+        #flame-table-section {
+            max-width: 1100px;
+            margin: 16px auto;
+            padding: 0 16px;
+        }
+        #flame-table-section h2 {
+            font-size: 18px;
+            color: #ffdd44;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 0 0 10px #ffaa0066;
+        }
+        #flame-table-wrap { overflow-x: auto; }
+        .flame-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 680px;
+        }
+        .flame-table thead tr { background: #1a1a3a; }
+        .flame-table th {
+            padding: 10px 12px;
+            text-align: center;
+            color: #ffdd44;
+            font-size: 12px;
+            border: 1px solid #2a2a4a;
+        }
+        .flame-table td {
+            padding: 9px 12px;
+            border: 1px solid #1a2a3a;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .flame-table tbody tr { transition: background 0.2s; }
+        .flame-table tbody tr:hover { background: #111827; }
+        .ft-sym { font-size: 20px; font-weight: bold; }
+        .ft-cat {
+            font-size: 11px; border-radius: 10px;
+            padding: 2px 8px; display: inline-block;
+        }
+        .ft-swatch {
+            display: inline-block;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        .ft-colorname { font-size: 13px; vertical-align: middle; }
+        .ft-desc { font-size: 12px; color: #aaa; text-align: left; line-height: 1.5; }
+
+        /* 불꽃 반응 원리 설명 */
+        #flame-principle {
+            max-width: 1100px;
+            margin: 12px auto 0;
+            padding: 14px 20px;
+            background: #0e1220;
+            border: 1px solid #1e2a3a;
+            border-radius: 12px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.8;
+        }
+        .principle-item b { display: block; margin-bottom: 2px; }
+
+        /* ===== 금속/준금속/비금속 구분 섹션 ===== */
+        #metal-section {
+            max-width: 1100px;
+            margin: 20px auto 0;
+            padding: 0 16px;
+        }
+        #metal-section h2 {
+            font-size: 18px;
+            color: #ffdd44;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 0 0 10px #ffaa0066;
+        }
+        .metal-intro {
+            background: #0e1220;
+            border: 1px solid #1e2a3a;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.9;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+        .metal-intro b { color: #ffdd44; }
+
+        /* 3분류 카드 */
+        .three-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+        @media(max-width:700px) { .three-cards { grid-template-columns: 1fr; } }
+        .mcard {
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid transparent;
+        }
+        .mcard h3 {
+            font-size: 15px;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #ffffff22;
+        }
+        .mcard .prop-list { font-size: 12px; color: #ccc; line-height: 2; }
+        .mcard .prop-list span { color: #aaa; }
+        .mcard .elem-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+        .elem-chip {
+            padding: 3px 9px; border-radius: 12px;
+            font-size: 12px; font-weight: bold;
+            cursor: pointer; transition: transform 0.15s;
+            border: 1px solid #555; color: #ccc; background: #1a1a2a;
+        }
+        .elem-chip:hover { transform: scale(1.12); }
+
+        .mcard-metal     { background: linear-gradient(135deg,#0e1e2e,#0a0f1a); border-color: #205080; }
+        .mcard-metal h3  { color: #66aaff; }
+        .mcard-metalloid { background: linear-gradient(135deg,#0e2a1e,#0a1410); border-color: #20a060; }
+        .mcard-metalloid h3 { color: #44ff99; }
+        .mcard-nonmetal  { background: linear-gradient(135deg,#1a0e2a,#100a1a); border-color: #6020a0; }
+        .mcard-nonmetal h3 { color: #cc88ff; }
+
+        /* 비교표 */
+        #compare-wrap { overflow-x: auto; margin-bottom: 16px; }
+        .compare-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 500px;
+        }
+        .compare-table th, .compare-table td {
+            padding: 9px 12px;
+            border: 1px solid #1e2a3a;
+            text-align: center;
+        }
+        .compare-table th { background: #1a1a3a; color: #ffdd44; }
+        .compare-table td:first-child { color: #aaa; text-align: left; }
+        .c-metal     { color: #66aaff; }
+        .c-metalloid { color: #44ff99; }
+        .c-nonmetal  { color: #cc88ff; }
+        .compare-table tbody tr:nth-child(even) { background: #0e1220; }
+        .compare-table tbody tr:hover { background: #111827; }
+
+        /* ===== 주기율표 공통 ===== */
+        #periodic-table-wrapper {
+            padding: 10px 20px 20px;
+            overflow-x: auto;
+        }
+        #periodic-table-container {
+            position: relative;
+            width: max-content;
+            margin: 0 auto;
+        }
+        #group-header {
+            display: grid;
+            grid-template-columns: 30px repeat(18, 60px);
+            gap: 3px;
+            margin-bottom: 3px;
+        }
+        .group-label {
+            text-align: center; font-size: 11px;
+            color: #ffdd44; font-weight: bold;
+            padding: 3px 0;
+            background: rgba(255,221,68,0.1);
+            border-radius: 4px;
+        }
+        #periodic-table {
+            display: grid;
+            grid-template-columns: 30px repeat(18, 60px);
+            grid-template-rows: repeat(7, 55px);
+            gap: 3px;
+        }
+        .period-label {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; color: #ffdd44; font-weight: bold;
+            background: rgba(255,221,68,0.1); border-radius: 4px;
+        }
+
+        /* 원소 셀 */
+        .element {
+            border-radius: 6px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative; padding: 2px;
+            border: 1px solid transparent;
+        }
+        .element:hover { transform: scale(1.1); z-index: 100; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.4); }
+        .element.flame-element { border-color: var(--flame-color, #888) !important; box-shadow: 0 0 8px var(--flame-color, #888); }
+        .element.selected {
+            transform: scale(1.15); z-index: 101;
+            box-shadow: 0 0 20px var(--flame-color, #fff), 0 0 5px var(--flame-color, #fff) inset;
+        }
+        .element.empty { background: transparent; border: none; cursor: default; }
+        .element.empty:hover { transform: none; box-shadow: none; }
+
+        .element-number { font-size: 9px; color: #aaa; align-self: flex-start; padding-left: 3px; line-height: 1; }
+        .element-symbol { font-size: 18px; font-weight: bold; color: #fff; line-height: 1.1; }
+        .element-name   { font-size: 8px; color: #bbb; line-height: 1; }
+
+        /* ── 금속 ── */
+        .cat-alkali     { background:#2a1010; border-color:#8b2020; }
+        .cat-alkaline   { background:#2a1e0a; border-color:#8b6020; }
+        .cat-transition { background:#0e1e2e; border-color:#205080; }
+        .cat-post       { background:#1e2a0e; border-color:#406020; }
+        /* ── 준금속 ── */
+        .cat-metalloid  { background:#0e2a1e; border-color:#20a060; }
+        /* ── 비금속 ── */
+        .cat-nonmetal   { background:#1a0e2a; border-color:#6020a0; }
+        .cat-halogen    { background:#200e30; border-color:#7020a0; }
+        .cat-noble      { background:#2a0a2a; border-color:#902090; }
+        /* ── 란타/악티 ── */
+        .cat-lanthanide { background:#2a2a0a; border-color:#807020; }
+        .cat-actinide   { background:#200a20; border-color:#602060; }
+
+        /* 란타/악티 행 */
+        #lanthanide-row, #actinide-row {
+            display: grid;
+            grid-template-columns: 30px repeat(18, 60px);
+            gap: 3px;
+            margin-top: 10px;
+        }
+        .series-label {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; color: #888; text-align: center;
+        }
+
+        /* ===== 카테고리 범례 ===== */
+        #category-legend {
+            display: flex; flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px; padding: 8px 20px;
+            max-width: 1000px; margin: 4px auto 0;
+        }
+        .cat-legend {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 11px; color: #ccc;
+        }
+        .cat-legend-box { width: 14px; height: 14px; border-radius: 3px; border: 1px solid #555; }
+
+        /* 금속/비금속 배지 */
+        #metal-badge-row {
+            display: flex; justify-content: center;
+            gap: 14px; flex-wrap: wrap; margin: 6px 0 2px;
+        }
+        .metal-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 14px; border-radius: 20px;
+            font-size: 12px; border: 1px solid;
+        }
+        .mb-metal     { background:#0e1e2e88; border-color:#3366aa; color:#66aaff; }
+        .mb-metalloid { background:#0e2a1e88; border-color:#20a060; color:#44ff99; }
+        .mb-nonmetal  { background:#1a0e2a88; border-color:#6020a0; color:#cc88ff; }
+        .mb-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+        /* ===== 정보 패널 ===== */
+        #info-panel {
+            max-width: 600px;
+            margin: 10px auto;
+            background: #111827;
+            border: 1px solid #2a3a4a;
+            border-radius: 12px;
+            padding: 15px 20px;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.8;
+            display: none;
+        }
+        #info-panel.visible { display: block; }
+        #info-panel h2 { color: #ffdd44; margin-bottom: 8px; font-size: 16px; }
+        .info-row { display: flex; gap: 10px; }
+        .info-label { color: #888; min-width: 90px; }
+        .info-value { color: #fff; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<h1>🔥 불꽃 반응 시뮬레이션
+    <span>원소를 클릭하면 불꽃 반응 색을 확인할 수 있어요!</span>
+</h1>
+
+<!-- 불꽃 디스플레이 -->
+<div id="flame-display">
+    <div id="default-text">⬇ 주기율표에서 원소를 클릭하세요!</div>
+    <div class="flame-container" id="flame-container">
+        <div class="flame" id="flame-outer"></div>
+        <div class="flame-inner" id="flame-inner"></div>
+        <div class="flame-core"></div>
+    </div>
+    <div id="flame-info" style="display:none;">
+        <div id="flame-element-name"></div>
+        <div id="flame-color-name"></div>
+    </div>
+</div>
+
+<!-- 초기화 버튼 -->
+<div id="controls">
+    <button id="reset-btn">🔄 초기화</button>
+</div>
+
+<!-- 불꽃 반응 원소 범례 -->
+<div id="flame-legend"></div>
+
+<!-- ===== 불꽃 반응 표 ===== -->
+<div id="flame-table-section">
+    <h2>📊 불꽃 반응 원소 정리표</h2>
+    <div id="flame-table-wrap">
+        <table class="flame-table">
+            <thead>
+                <tr>
+                    <th>원자번호</th>
+                    <th>기호</th>
+                    <th>이름</th>
+                    <th>분류</th>
+                    <th>금속/비금속</th>
+                    <th>불꽃 색상</th>
+                    <th>대표 파장</th>
+                    <th>활용</th>
+                    <th>설명</th>
+                </tr>
+            </thead>
+            <tbody id="flame-tbody"></tbody>
+        </table>
+    </div>
+    <!-- 불꽃 반응 원리 -->
+    <div id="flame-principle">
+        <div class="principle-item">
+            <b style="color:#88ccff;">① 에너지 흡수</b>
+            불꽃의 열에너지를 흡수한 전자가 낮은 에너지 준위에서 높은 에너지 준위로 이동해요.
+        </div>
+        <div class="principle-item">
+            <b style="color:#ff9944;">② 에너지 방출</b>
+            들뜬 전자가 원래 자리로 돌아오면서 에너지 차이만큼의 빛을 방출해요.
+        </div>
+        <div class="principle-item">
+            <b style="color:#44ff88;">③ 고유한 색</b>
+            방출하는 빛의 파장(색)은 원소마다 달라서 원소를 구별하는 데 사용돼요.
+        </div>
+        <div class="principle-item">
+            <b style="color:#ff66aa;">④ 스펙트럼 분석</b>
+            분광기로 분석하면 원소마다 고유한 선 스펙트럼을 확인할 수 있어요.
+        </div>
+    </div>
+</div>
+
+<!-- ===== 금속 / 준금속 / 비금속 ===== -->
+<div id="metal-section">
+    <h2>⚗️ 금속 · 준금속 · 비금속 분류</h2>
+    <div class="metal-intro">
+        주기율표의 원소는 <b>금속(Metal)</b>, <b>준금속(Metalloid)</b>, <b>비금속(Non-metal)</b>으로 나뉘어요.<br>
+        아래 원소 칩을 클릭하면 불꽃 시뮬레이션에서 바로 확인할 수 있어요!
+    </div>
+    <div class="three-cards">
+        <!-- 금속 -->
+        <div class="mcard mcard-metal">
+            <h3>🔵 금속 (Metal)</h3>
+            <div class="prop-list">
+                <div>· <b>전기 전도성</b>: <span>우수</span></div>
+                <div>· <b>광택</b>: <span>금속 광택 있음</span></div>
+                <div>· <b>연성·전성</b>: <span>있음</span></div>
+                <div>· <b>상온 상태</b>: <span>대부분 고체</span></div>
+                <div>· <b>반응성</b>: <span>양이온이 되기 쉬움</span></div>
+                <div>· <b>불꽃 반응</b>: <span>주로 나타남 ✅</span></div>
+                <div>· <b>주기율표 위치</b>: <span>왼쪽·가운데</span></div>
+            </div>
+            <div class="elem-chips" id="chips-metal"></div>
+        </div>
+        <!-- 준금속 -->
+        <div class="mcard mcard-metalloid">
+            <h3>🟢 준금속 (Metalloid)</h3>
+            <div class="prop-list">
+                <div>· <b>전기 전도성</b>: <span>반도체 성질</span></div>
+                <div>· <b>광택</b>: <span>약간 있음</span></div>
+                <div>· <b>연성·전성</b>: <span>거의 없음</span></div>
+                <div>· <b>상온 상태</b>: <span>고체</span></div>
+                <div>· <b>반응성</b>: <span>금속·비금속 중간</span></div>
+                <div>· <b>불꽃 반응</b>: <span>일부 나타남 🔶</span></div>
+                <div>· <b>주기율표 위치</b>: <span>경계 계단선 근처</span></div>
+            </div>
+            <div class="elem-chips" id="chips-metalloid"></div>
+        </div>
+        <!-- 비금속 -->
+        <div class="mcard mcard-nonmetal">
+            <h3>🟣 비금속 (Non-metal)</h3>
+            <div class="prop-list">
+                <div>· <b>전기 전도성</b>: <span>거의 없음</span></div>
+                <div>· <b>광택</b>: <span>없음</span></div>
+                <div>· <b>연성·전성</b>: <span>없음</span></div>
+                <div>· <b>상온 상태</b>: <span>기체·액체·고체 다양</span></div>
+                <div>· <b>반응성</b>: <span>음이온이 되기 쉬움</span></div>
+                <div>· <b>불꽃 반응</b>: <span>거의 없음 ❌</span></div>
+                <div>· <b>주기율표 위치</b>: <span>오른쪽 위</span></div>
+            </div>
+            <div class="elem-chips" id="chips-nonmetal"></div>
+        </div>
+    </div>
+
+    <!-- 비교표 -->
+    <div id="compare-wrap">
+        <table class="compare-table" id="compare-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">성질 비교</th>
+                    <th>🔵 금속</th>
+                    <th>🟢 준금속</th>
+                    <th>🟣 비금속</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ===== 카테고리 범례 ===== -->
+<div id="category-legend"></div>
+
+<!-- ===== 금속/비금속/준금속 배지 ===== -->
+<div id="metal-badge-row">
+    <div class="metal-badge mb-metal">
+        <div class="mb-dot" style="background:#3366aa;"></div>금속
+    </div>
+    <div class="metal-badge mb-metalloid">
+        <div class="mb-dot" style="background:#20a060;"></div>준금속
+    </div>
+    <div class="metal-badge mb-nonmetal">
+        <div class="mb-dot" style="background:#8040cc;"></div>비금속
+    </div>
+</div>
+
+<!-- ===== 주기율표 ===== -->
+<div id="periodic-table-wrapper">
+    <div id="periodic-table-container">
+        <div id="group-header"></div>
+        <div id="periodic-table"></div>
+        <div id="lanthanide-row"></div>
+        <div id="actinide-row"></div>
+    </div>
+</div>
+
+<!-- ===== 정보 패널 ===== -->
+<div id="info-panel">
+    <h2 id="info-title"></h2>
+    <div class="info-row"><span class="info-label">원소 기호</span><span class="info-value" id="info-symbol"></span></div>
+    <div class="info-row"><span class="info-label">원자 번호</span><span class="info-value" id="info-number"></span></div>
+    <div class="info-row"><span class="info-label">분류</span><span class="info-value" id="info-category"></span></div>
+    <div class="info-row"><span class="info-label">금속/비금속</span><span class="info-value" id="info-metaltype"></span></div>
+    <div class="info-row"><span class="info-label">주기 / 족</span><span class="info-value" id="info-periodgroup"></span></div>
+    <div class="info-row"><span class="info-label">불꽃 색</span><span class="info-value" id="info-flame"></span></div>
+    <div class="info-row"><span class="info-label">설명</span><span class="info-value" id="info-desc"></span></div>
+</div>
+
+<script>
+// =============================================
+// 데이터
+// =============================================
+const flameData = {
+    Li: { color:'#ff2222', colorName:'진한 빨간색 (심홍색)',   wave:'670 nm', use:'불꽃놀이 빨간색',          desc:'리튬은 심홍색 불꽃을 내요. 불꽃놀이 빨간 불꽃에 사용돼요!' },
+    Na: { color:'#ffcc00', colorName:'노란색',                  wave:'589 nm', use:'나트륨 가로등·불꽃 시험', desc:'나트륨은 강렬한 노란색 불꽃을 내요. 소량이라도 아주 강해요!' },
+    K:  { color:'#cc44ff', colorName:'보라색 (라일락색)',       wave:'766 nm', use:'불꽃 시험·분석화학',      desc:'칼륨은 보라색 불꽃을 내요. 파란 유리로 관찰하면 더 잘 보여요!' },
+    Rb: { color:'#dd0088', colorName:'빨간 보라색',             wave:'780 nm', use:'분석화학',                desc:'루비듐은 빨간 보라색 불꽃을 내요.' },
+    Cs: { color:'#6688ff', colorName:'하늘색 (청자색)',         wave:'852 nm', use:'원자시계·분석화학',       desc:'세슘은 하늘색 불꽃을 내요. 세슘 원자시계로도 유명해요!' },
+    Ca: { color:'#ff7700', colorName:'주황색 (벽돌색)',         wave:'622 nm', use:'불꽃놀이 주황색',         desc:'칼슘은 주황색 불꽃을 내요. 불꽃놀이 주황색에 사용돼요!' },
+    Sr: { color:'#ff1111', colorName:'밝은 빨간색 (진홍색)',   wave:'606 nm', use:'불꽃놀이 빨간색(주)',      desc:'스트론튬은 밝고 선명한 빨간 불꽃을 내요!' },
+    Ba: { color:'#44ff44', colorName:'연두색 (황록색)',         wave:'554 nm', use:'불꽃놀이 초록색',         desc:'바륨은 황록색 불꽃을 내요. 불꽃놀이 초록색에 사용돼요!' },
+    Cu: { color:'#00cc44', colorName:'청록색 (녹색)',           wave:'515 nm', use:'불꽃놀이 초록·파랑',      desc:'구리는 청록색 불꽃을 내요. 불꽃놀이 초록~파란색에 사용돼요!' },
+    Fe: { color:'#ffaa33', colorName:'금색 (황금색)',           wave:'430 nm', use:'스파크 효과',             desc:'철은 황금색 스파크를 내요. 불꽃놀이 스파크에 사용돼요!' },
+    Zn: { color:'#88aaff', colorName:'청백색',                  wave:'480 nm', use:'불꽃 시험',               desc:'아연은 청백색 불꽃을 내요.' },
+    Pb: { color:'#aaddff', colorName:'청백색 (파란 흰색)',     wave:'405 nm', use:'분석',                    desc:'납은 청백색 불꽃을 내요.' },
+    In: { color:'#4488ff', colorName:'파란색 (인디고)',         wave:'451 nm', use:'분석화학',                desc:'인듐은 선명한 파란색 불꽃을 내요.' },
+    Ga: { color:'#aaaaff', colorName:'연한 파란색',             wave:'417 nm', use:'반도체·분석',             desc:'갈륨은 연한 파란색 불꽃을 내요.' },
+    Tl: { color:'#00ff88', colorName:'밝은 초록색',             wave:'535 nm', use:'분석화학 (독성 주의!)',   desc:'탈륨은 밝은 초록색 불꽃을 내지만 매우 독성이 강해요!' },
+    B:  { color:'#88ff00', colorName:'연한 노란-녹색',          wave:'518 nm', use:'불꽃놀이·분석',           desc:'붕소는 연한 노란-녹색 불꽃을 내요.' },
+    As: { color:'#aaffaa', colorName:'연한 청자색',             wave:'558 nm', use:'분석',                   desc:'비소는 연한 청자색 불꽃을 내요.' },
+    Se: { color:'#88ff44', colorName:'파란색',                  wave:'460 nm', use:'분석',                   desc:'셀레늄은 파란색 불꽃을 내요.' },
+};
+
+const metalType = {
+    alkali:'금속', alkaline:'금속', transition:'금속', post:'금속',
+    metalloid:'준금속',
+    nonmetal:'비금속', halogen:'비금속', noble:'비금속',
+    lanthanide:'금속', actinide:'금속'
+};
+const metalTypeColor = { '금속':'#66aaff', '준금속':'#44ff99', '비금속':'#cc88ff' };
+
+const catKor = {
+    alkali:'알칼리 금속', alkaline:'알칼리 토금속',
+    transition:'전이 금속', post:'전이후 금속',
+    metalloid:'준금속',
+    nonmetal:'비금속', halogen:'할로젠', noble:'비활성 기체',
+    lanthanide:'란타넘족', actinide:'악티늄족'
+};
+
+const catStyle = {
+    alkali:     { bg:'#2a1010', bc:'#8b2020', tc:'#ff8888' },
+    alkaline:   { bg:'#2a1e0a', bc:'#8b6020', tc:'#ffaa66' },
+    transition: { bg:'#0e1e2e', bc:'#205080', tc:'#6699ff' },
+    post:       { bg:'#1e2a0e', bc:'#406020', tc:'#88cc44' },
+    metalloid:  { bg:'#0e2a1e', bc:'#20a060', tc:'#44ffaa' },
+    nonmetal:   { bg:'#1a0e2a', bc:'#6020a0', tc:'#bb66ff' },
+    halogen:    { bg:'#200e30', bc:'#7020a0', tc:'#cc66ff' },
+    noble:      { bg:'#2a0a2a', bc:'#902090', tc:'#ff66ff' },
+    lanthanide: { bg:'#2a2a0a', bc:'#807020', tc:'#ffdd44' },
+    actinide:   { bg:'#200a20', bc:'#602060', tc:'#ff88cc' },
+};
+
+const elements = [
+    {num:1,  sym:'H',  name:'수소',      cat:'nonmetal',  period:1, group:1 },
+    {num:2,  sym:'He', name:'헬륨',      cat:'noble',     period:1, group:18},
+    {num:3,  sym:'Li', name:'리튬',      cat:'alkali',    period:2, group:1 },
+    {num:4,  sym:'Be', name:'베릴륨',    cat:'alkaline',  period:2, group:2 },
+    {num:5,  sym:'B',  name:'붕소',      cat:'metalloid', period:2, group:13},
+    {num:6,  sym:'C',  name:'탄소',      cat:'nonmetal',  period:2, group:14},
+    {num:7,  sym:'N',  name:'질소',      cat:'nonmetal',  period:2, group:15},
+    {num:8,  sym:'O',  name:'산소',      cat:'nonmetal',  period:2, group:16},
+    {num:9,  sym:'F',  name:'플루오린',  cat:'halogen',   period:2, group:17},
+    {num:10, sym:'Ne', name:'네온',      cat:'noble',     period:2, group:18},
+    {num:11, sym:'Na', name:'나트륨',    cat:'alkali',    period:3, group:1 },
+    {num:12, sym:'Mg', name:'마그네슘',  cat:'alkaline',  period:3, group:2 },
+    {num:13, sym:'Al', name:'알루미늄',  cat:'post',      period:3, group:13},
+    {num:14, sym:'Si', name:'규소',      cat:'metalloid', period:3, group:14},
+    {num:15, sym:'P',  name:'인',        cat:'nonmetal',  period:3, group:15},
+    {num:16, sym:'S',  name:'황',        cat:'nonmetal',  period:3, group:16},
+    {num:17, sym:'Cl', name:'염소',      cat:'halogen',   period:3, group:17},
+    {num:18, sym:'Ar', name:'아르곤',    cat:'noble',     period:3, group:18},
+    {num:19, sym:'K',  name:'칼륨',      cat:'alkali',    period:4, group:1 },
+    {num:20, sym:'Ca', name:'칼슘',      cat:'alkaline',  period:4, group:2 },
+    {num:21, sym:'Sc', name:'스칸듐',    cat:'transition',period:4, group:3 },
+    {num:22, sym:'Ti', name:'타이타늄',  cat:'transition',period:4, group:4 },
+    {num:23, sym:'V',  name:'바나듐',    cat:'transition',period:4, group:5 },
+    {num:24, sym:'Cr', name:'크로뮴',    cat:'transition',period:4, group:6 },
+    {num:25, sym:'Mn', name:'망가니즈',  cat:'transition',period:4, group:7 },
+    {num:26, sym:'Fe', name:'철',        cat:'transition',period:4, group:8 },
+    {num:27, sym:'Co', name:'코발트',    cat:'transition',period:4, group:9 },
+    {num:28, sym:'Ni', name:'니켈',      cat:'transition',period:4, group:10},
+    {num:29, sym:'Cu', name:'구리',      cat:'transition',period:4, group:11},
+    {num:30, sym:'Zn', name:'아연',      cat:'transition',period:4, group:12},
+    {num:31, sym:'Ga', name:'갈륨',      cat:'post',      period:4, group:13},
+    {num:32, sym:'Ge', name:'저마늄',    cat:'metalloid', period:4, group:14},
+    {num:33, sym:'As', name:'비소',      cat:'metalloid', period:4, group:15},
+    {num:34, sym:'Se', name:'셀레늄',    cat:'nonmetal',  period:4, group:16},
+    {num:35, sym:'Br', name:'브로민',    cat:'halogen',   period:4, group:17},
+    {num:36, sym:'Kr', name:'크립톤',    cat:'noble',     period:4, group:18},
+    {num:37, sym:'Rb', name:'루비듐',    cat:'alkali',    period:5, group:1 },
+    {num:38, sym:'Sr', name:'스트론튬',  cat:'alkaline',  period:5, group:2 },
+    {num:39, sym:'Y',  name:'이트륨',    cat:'transition',period:5, group:3 },
+    {num:40, sym:'Zr', name:'지르코늄',  cat:'transition',period:5, group:4 },
+    {num:41, sym:'Nb', name:'나이오븀',  cat:'transition',period:5, group:5 },
+    {num:42, sym:'Mo', name:'몰리브데넘',cat:'transition',period:5, group:6 },
+    {num:43, sym:'Tc', name:'테크네튬',  cat:'transition',period:5, group:7 },
+    {num:44, sym:'Ru', name:'루테늄',    cat:'transition',period:5, group:8 },
+    {num:45, sym:'Rh', name:'로듐',      cat:'transition',period:5, group:9 },
+    {num:46, sym:'Pd', name:'팔라듐',    cat:'transition',period:5, group:10},
+    {num:47, sym:'Ag', name:'은',        cat:'transition',period:5, group:11},
+    {num:48, sym:'Cd', name:'카드뮴',    cat:'transition',period:5, group:12},
+    {num:49, sym:'In', name:'인듐',      cat:'post',      period:5, group:13},
+    {num:50, sym:'Sn', name:'주석',      cat:'post',      period:5, group:14},
+    {num:51, sym:'Sb', name:'안티모니',  cat:'metalloid', period:5, group:15},
+    {num:52, sym:'Te', name:'텔루륨',    cat:'metalloid', period:5, group:16},
+    {num:53, sym:'I',  name:'아이오딘',  cat:'halogen',   period:5, group:17},
+    {num:54, sym:'Xe', name:'제논',      cat:'noble',     period:5, group:18},
+    {num:55, sym:'Cs', name:'세슘',      cat:'alkali',    period:6, group:1 },
+    {num:56, sym:'Ba', name:'바륨',      cat:'alkaline',  period:6, group:2 },
+    {num:57, sym:'La', name:'란타넘',    cat:'lanthanide',period:6, group:3, series:'lanthanide'},
+    {num:72, sym:'Hf', name:'하프늄',    cat:'transition',period:6, group:4 },
+    {num:73, sym:'Ta', name:'탄탈럼',    cat:'transition',period:6, group:5 },
+    {num:74, sym:'W',  name:'텅스텐',    cat:'transition',period:6, group:6 },
+    {num:75, sym:'Re', name:'레늄',      cat:'transition',period:6, group:7 },
+    {num:76, sym:'Os', name:'오스뮴',    cat:'transition',period:6, group:8 },
+    {num:77, sym:'Ir', name:'이리듐',    cat:'transition',period:6, group:9 },
+    {num:78, sym:'Pt', name:'백금',      cat:'transition',period:6, group:10},
+    {num:79, sym:'Au', name:'금',        cat:'transition',period:6, group:11},
+    {num:80, sym:'Hg', name:'수은',      cat:'transition',period:6, group:12},
+    {num:81, sym:'Tl', name:'탈륨',      cat:'post',      period:6, group:13},
+    {num:82, sym:'Pb', name:'납',        cat:'post',      period:6, group:14},
+    {num:83, sym:'Bi', name:'비스무트',  cat:'post',      period:6, group:15},
+    {num:84, sym:'Po', name:'폴로늄',    cat:'post',      period:6, group:16},
+    {num:85, sym:'At', name:'아스타틴',  cat:'halogen',   period:6, group:17},
+    {num:86, sym:'Rn', name:'라돈',      cat:'noble',     period:6, group:18},
+    {num:87, sym:'Fr', name:'프란슘',    cat:'alkali',    period:7, group:1 },
+    {num:88, sym:'Ra', name:'라듐',      cat:'alkaline',  period:7, group:2 },
+    {num:89, sym:'Ac', name:'악티늄',    cat:'actinide',  period:7, group:3, series:'actinide'},
+    {num:104,sym:'Rf', name:'러더포듐',  cat:'transition',period:7, group:4 },
+    {num:105,sym:'Db', name:'더브늄',    cat:'transition',period:7, group:5 },
+    {num:106,sym:'Sg', name:'시보귬',    cat:'transition',period:7, group:6 },
+    {num:107,sym:'Bh', name:'보륨',      cat:'transition',period:7, group:7 },
+    {num:108,sym:'Hs', name:'하슘',      cat:'transition',period:7, group:8 },
+    {num:109,sym:'Mt', name:'마이트너륨',cat:'transition',period:7, group:9 },
+    {num:110,sym:'Ds', name:'다름슈타튬',cat:'transition',period:7, group:10},
+    {num:111,sym:'Rg', name:'뢴트게늄', cat:'transition', period:7, group:11},
+    {num:112,sym:'Cn', name:'코페르니슘',cat:'transition',period:7, group:12},
+    {num:113,sym:'Nh', name:'니호늄',    cat:'post',      period:7, group:13},
+    {num:114,sym:'Fl', name:'플레로븀',  cat:'post',      period:7, group:14},
+    {num:115,sym:'Mc', name:'모스코븀',  cat:'post',      period:7, group:15},
+    {num:116,sym:'Lv', name:'리버모륨',  cat:'post',      period:7, group:16},
+    {num:117,sym:'Ts', name:'테네신',    cat:'halogen',   period:7, group:17},
+    {num:118,sym:'Og', name:'오가네손',  cat:'noble',     period:7, group:18},
+];
+const lanthanides = [
+    {num:58,sym:'Ce',name:'세륨',cat:'lanthanide'},
+    {num:59,sym:'Pr',name:'프라세오디뮴',cat:'lanthanide'},
+    {num:60,sym:'Nd',name:'네오디뮴',cat:'lanthanide'},
+    {num:61,sym:'Pm',name:'프로메튬',cat:'lanthanide'},
+    {num:62,sym:'Sm',name:'사마륨',cat:'lanthanide'},
+    {num:63,sym:'Eu',name:'유로퓸',cat:'lanthanide'},
+    {num:64,sym:'Gd',name:'가돌리늄',cat:'lanthanide'},
+    {num:65,sym:'Tb',name:'터븀',cat:'lanthanide'},
+    {num:66,sym:'Dy',name:'디스프로슘',cat:'lanthanide'},
+    {num:67,sym:'Ho',name:'홀뮴',cat:'lanthanide'},
+    {num:68,sym:'Er',name:'어븀',cat:'lanthanide'},
+    {num:69,sym:'Tm',name:'툴륨',cat:'lanthanide'},
+    {num:70,sym:'Yb',name:'이터븀',cat:'lanthanide'},
+    {num:71,sym:'Lu',name:'루테튬',cat:'lanthanide'},
+];
+const actinides = [
+    {num:90,sym:'Th',name:'토륨',cat:'actinide'},
+    {num:91,sym:'Pa',name:'프로탁티늄',cat:'actinide'},
+    {num:92,sym:'U', name:'우라늄',cat:'actinide'},
+    {num:93,sym:'Np',name:'넵투늄',cat:'actinide'},
+    {num:94,sym:'Pu',name:'플루토늄',cat:'actinide'},
+    {num:95,sym:'Am',name:'아메리슘',cat:'actinide'},
+    {num:96,sym:'Cm',name:'퀴륨',cat:'actinide'},
+    {num:97,sym:'Bk',name:'버클륨',cat:'actinide'},
+    {num:98,sym:'Cf',name:'캘리포늄',cat:'actinide'},
+    {num:99,sym:'Es',name:'아인슈타이늄',cat:'actinide'},
+    {num:100,sym:'Fm',name:'페르뮴',cat:'actinide'},
+    {num:101,sym:'Md',name:'멘델레븀',cat:'actinide'},
+    {num:102,sym:'No',name:'노벨륨',cat:'actinide'},
+    {num:103,sym:'Lr',name:'로렌슘',cat:'actinide'},
+];
+const allElements = [...elements, ...lanthanides, ...actinides];
+
+// =============================================
+// 불꽃 반응 범례
+// =============================================
+function buildFlameLegend() {
+    const legend = document.getElementById('flame-legend');
+    const flameEls = allElements.filter(e => flameData[e.sym]).sort((a,b)=>a.num-b.num);
+    flameEls.forEach(el => {
+        const fd = flameData[el.sym];
+        const item = document.createElement('div');
+        item.className = 'legend-item';
+        item.innerHTML = `
+            <div class="legend-color" style="background:${fd.color};box-shadow:0 0 5px ${fd.color};"></div>
+            <span><b>${el.sym}</b>(${el.name}): ${fd.colorName}</span>
+        `;
+        legend.appendChild(item);
+    });
+}
+
+// =============================================
+// 불꽃 반응 표
+// =============================================
+function buildFlameTable() {
+    const tbody = document.getElementById('flame-tbody');
+    const flameEls = allElements.filter(e => flameData[e.sym]).sort((a,b)=>a.num-b.num);
+    flameEls.forEach(el => {
+        const fd = flameData[el.sym];
+        const mt = metalType[el.cat] || '-';
+        const mtColor = metalTypeColor[mt] || '#fff';
+        const cs = catStyle[el.cat] || { bg:'#111', bc:'#333', tc:'#fff' };
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.innerHTML = `
+            <td style="color:#888;font-size:12px;">${el.num}</td>
+            <td>
+                <div class="ft-sym" style="color:${fd.color};text-shadow:0 0 8px ${fd.color};">${el.sym}</div>
+            </td>
+            <td style="font-size:13px;color:#ccc;">${el.name}</td>
+            <td>
+                <span class="ft-cat" style="background:${cs.bg};color:${cs.tc};border:1px solid ${cs.bc};">
+                    ${catKor[el.cat]}
+                </span>
+            </td>
+            <td style="color:${mtColor};font-weight:bold;font-size:13px;">${mt}</td>
+            <td>
+                <span class="ft-swatch" style="background:${fd.color};box-shadow:0 0 7px ${fd.color};"></span>
+                <span class="ft-colorname" style="color:${fd.color};">${fd.colorName}</span>
+            </td>
+            <td style="font-size:12px;color:#aaa;">${fd.wave}</td>
+            <td style="font-size:12px;color:#88ccff;">${fd.use}</td>
+            <td class="ft-desc">${fd.desc}</td>
+        `;
+        tr.addEventListener('click', () => onElementClick(el));
+        tbody.appendChild(tr);
+    });
+}
+
+// =============================================
+// 금속/준금속/비금속 칩
+// =============================================
+function buildMetalChips() {
+    const metalEls    = allElements.filter(e => metalType[e.cat] === '금속');
+    const metalloidEls= allElements.filter(e => metalType[e.cat] === '준금속');
+    const nonmetalEls = allElements.filter(e => metalType[e.cat] === '비금속');
+
+    function fillChips(containerId, list) {
+        const wrap = document.getElementById(containerId);
+        // 대표 원소만 (너무 많으면 일부만)
+        const show = list.slice(0, 20);
+        show.forEach(el => {
+            const fd = flameData[el.sym];
+            const chip = document.createElement('span');
+            chip.className = 'elem-chip';
+            if (fd) {
+                chip.style.cssText = `background:${fd.color}33;color:${fd.color};border:1px solid ${fd.color}88;`;
+                chip.title = `${el.name} — 불꽃 반응: ${fd.colorName}`;
+            } else {
+                chip.title = el.name;
+            }
+            chip.textContent = el.sym;
+            chip.addEventListener('click', () => {
+                onElementClick(el);
+                // 페이지 상단 불꽃 디스플레이로 스크롤
+                document.getElementById('flame-display').scrollIntoView({ behavior:'smooth', block:'center' });
+            });
+            wrap.appendChild(chip);
+        });
+    }
+    fillChips('chips-metal',     metalEls);
+    fillChips('chips-metalloid', metalloidEls);
+    fillChips('chips-nonmetal',  nonmetalEls);
+}
+
+// =============================================
+// 비교표
+// =============================================
+function buildCompareTable() {
+    const rows = [
+        ['전기 전도성',     '✅ 우수',          '🔶 반도체',       '❌ 불량'],
+        ['열 전도성',       '✅ 우수',          '🔶 보통',         '❌ 불량'],
+        ['광택',            '✅ 금속 광택',     '🔶 약간 있음',    '❌ 없음'],
+        ['연성·전성',       '✅ 있음',          '❌ 없음',         '❌ 없음'],
+        ['상온 상태',       '고체 (Hg 제외)',   '고체',            '고체·액체·기체'],
+        ['이온화 경향',     '양이온 되기 쉬움', '중간',            '음이온 되기 쉬움'],
+        ['불꽃 반응',       '✅ 주로 나타남',   '🔶 일부 있음',    '❌ 거의 없음'],
+        ['주기율표 위치',   '왼쪽·가운데',      '경계 계단선',     '오른쪽 위'],
+        ['대표 원소',       'Fe, Cu, Na, K',    'Si, Ge, B, As',   'O, N, C, Cl'],
+    ];
+    const tbody = document.querySelector('#compare-table tbody');
+    rows.forEach(([prop, m, ml, nm]) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${prop}</td>
+            <td class="c-metal">${m}</td>
+            <td class="c-metalloid">${ml}</td>
+            <td class="c-nonmetal">${nm}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// =============================================
+// 카테고리 범례
+// =============================================
+function buildCategoryLegend() {
+    const legend = document.getElementById('category-legend');
+    Object.entries(catStyle).forEach(([cat, s]) => {
+        const div = document.createElement('div');
+        div.className = 'cat-legend';
+        div.innerHTML = `
+            <div class="cat-legend-box" style="background:${s.bg};border-color:${s.bc};"></div>
+            ${catKor[cat]}
+        `;
+        legend.appendChild(div);
+    });
+}
+
+// =============================================
+// 주기율표 빌드
+// =============================================
+function buildGroupHeader() {
+    const header = document.getElementById('group-header');
+    header.appendChild(document.createElement('div')); // corner
+    for (let g = 1; g <= 18; g++) {
+        const d = document.createElement('div');
+        d.className = 'group-label';
+        d.textContent = g + '족';
+        header.appendChild(d);
+    }
+}
+
+function buildPeriodicTable() {
+    const table = document.getElementById('periodic-table');
+    for (let period = 1; period <= 7; period++) {
+        const pl = document.createElement('div');
+        pl.className = 'period-label';
+        pl.textContent = period + '주기';
+        pl.style.gridRow = period;
+        pl.style.gridColumn = 1;
+        table.appendChild(pl);
+
+        for (let group = 1; group <= 18; group++) {
+            const el = elements.find(e => e.period === period && e.group === group && !e.series);
+            const cell = document.createElement('div');
+            cell.style.gridRow = period;
+            cell.style.gridColumn = group + 1;
+
+            if (el) {
+                makeElementCell(cell, el);
+            } else if (period === 6 && group === 3) {
+                cell.className = 'element cat-lanthanide';
+                cell.innerHTML = `<div class="element-number">57-71</div><div class="element-symbol" style="font-size:10px;">란타<br>넘족</div>`;
+                cell.style.cursor = 'default';
+            } else if (period === 7 && group === 3) {
+                cell.className = 'element cat-actinide';
+                cell.innerHTML = `<div class="element-number">89-103</div><div class="element-symbol" style="font-size:10px;">악티<br>늄족</div>`;
+                cell.style.cursor = 'default';
+            } else {
+                cell.className = 'element empty';
+            }
+            table.appendChild(cell);
+        }
+    }
+}
+
+function buildLanthanideRow() {
+    const row = document.getElementById('lanthanide-row');
+    const lbl = document.createElement('div');
+    lbl.className = 'series-label';
+    lbl.innerHTML = '<span style="color:#807020;">란타<br>넘족</span>';
+    row.appendChild(lbl);
+    for (let i = 0; i < 2; i++) { const e = document.createElement('div'); e.className='element empty'; row.appendChild(e); }
+    lanthanides.forEach(el => { const c = document.createElement('div'); makeElementCell(c, el); row.appendChild(c); });
+    const rem = 18 - 2 - lanthanides.length;
+    for (let i = 0; i < rem; i++) { const e = document.createElement('div'); e.className='element empty'; row.appendChild(e); }
+}
+
+function buildActinideRow() {
+    const row = document.getElementById('actinide-row');
+    const lbl = document.createElement('div');
+    lbl.className = 'series-label';
+    lbl.innerHTML = '<span style="color:#602060;">악티<br>늄족</span>';
+    row.appendChild(lbl);
+    for (let i = 0; i < 2; i++) { const e = document.createElement('div'); e.className='element empty'; row.appendChild(e); }
+    actinides.forEach(el => { const c = document.createElement('div'); makeElementCell(c, el); row.appendChild(c); });
+    const rem = 18 - 2 - actinides.length;
+    for (let i = 0; i < rem; i++) { const e = document.createElement('div'); e.className='element empty'; row.appendChild(e); }
+}
+
+function makeElementCell(cell, el) {
+    const cs = catStyle[el.cat] || {};
+    const fd = flameData[el.sym];
+    const mt = metalType[el.cat];
+
+    cell.className = `element cat-${el.cat}`;
+    cell.dataset.sym = el.sym;
+
+    // 금속/준금속/비금속 외곽선 강조
+    if (mt === '금속')    cell.style.outline = '1px solid #3366aa44';
+    else if (mt === '준금속') cell.style.outline = '1px solid #20a06044';
+    else                  cell.style.outline = '1px solid #8040cc44';
+
+    if (fd) {
+        cell.classList.add('flame-element');
+        cell.style.setProperty('--flame-color', fd.color);
+    }
+    cell.innerHTML = `
+        <div class="element-number">${el.num}</div>
+        <div class="element-symbol">${el.sym}</div>
+        <div class="element-name">${el.name}</div>
+    `;
+    cell.addEventListener('click', () => onElementClick(el));
+}
+
+// =============================================
+// 불꽃 시뮬레이션
+// =============================================
+let sparkInterval = null;
+
+function onElementClick(el) {
+    document.querySelectorAll('.element.selected').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll(`[data-sym="${el.sym}"]`).forEach(c => c.classList.add('selected'));
+
+    const fd = flameData[el.sym];
+    if (fd) showFlame(el, fd);
+    else    showNoFlame(el);
+    showInfoPanel(el, fd);
+}
+
+function showFlame(el, fd) {
+    const display   = document.getElementById('flame-display');
+    const container = document.getElementById('flame-container');
+    const outer     = document.getElementById('flame-outer');
+    const inner     = document.getElementById('flame-inner');
+
+    display.style.setProperty('--flame-color', fd.color);
+    display.classList.add('active');
+    display.style.background = `radial-gradient(circle at center, ${fd.color}22 0%, #111 70%)`;
+
+    outer.style.background  = `radial-gradient(ellipse at bottom, ${fd.color} 0%, ${fd.color}88 50%, transparent 100%)`;
+    outer.style.boxShadow   = `0 0 20px ${fd.color}, 0 0 40px ${fd.color}66`;
+    inner.style.background  = `radial-gradient(ellipse at bottom, #fff9 0%, ${fd.color} 60%, transparent 100%)`;
+
+    document.getElementById('default-text').style.display = 'none';
+    container.classList.add('active');
+
+    const info = document.getElementById('flame-info');
+    info.style.display = 'block';
+    const nameEl = document.getElementById('flame-element-name');
+    nameEl.textContent = `${el.sym} - ${el.name}`;
+    nameEl.style.setProperty('--flame-color', fd.color);
+    nameEl.style.color = fd.color;
+    nameEl.style.textShadow = `0 0 10px ${fd.color}`;
+    document.getElementById('flame-color-name').textContent = `🔥 불꽃 색: ${fd.colorName}`;
+
+    clearSparks();
+    sparkInterval = setInterval(() => {
+        const sp = document.createElement('div');
+        sp.className = 'spark';
+        sp.style.background  = fd.color;
+        sp.style.boxShadow   = `0 0 4px ${fd.color}`;
+        sp.style.left        = (28 + Math.random() * 24) + 'px';
+        sp.style.setProperty('--spark-x', (Math.random() * 44 - 22) + 'px');
+        sp.style.animationDuration = (0.5 + Math.random() * 0.8) + 's';
+        container.appendChild(sp);
+        setTimeout(() => sp.remove(), 1300);
+    }, 280);
+}
+
+function showNoFlame(el) {
+    const display = document.getElementById('flame-display');
+    display.classList.remove('active');
+    display.style.background = '#111';
+    document.getElementById('flame-container').classList.remove('active');
+    document.getElementById('flame-info').style.display = 'none';
+    const dt = document.getElementById('default-text');
+    dt.style.display = 'block';
+    dt.innerHTML = `<span style="color:#aaa;font-size:16px;">${el.sym} (${el.name})</span><br><span style="color:#555;font-size:12px;">불꽃 반응 색이 없어요</span>`;
+    clearSparks();
+}
+
+function showInfoPanel(el, fd) {
+    const panel = document.getElementById('info-panel');
+    panel.classList.add('visible');
+    const mt = metalType[el.cat] || '-';
+    const mtColor = metalTypeColor[mt] || '#fff';
+
+    document.getElementById('info-title').textContent = `${el.sym} — ${el.name} (원자번호 ${el.num})`;
+    document.getElementById('info-symbol').textContent = el.sym;
+    document.getElementById('info-number').textContent = el.num;
+    document.getElementById('info-category').textContent = catKor[el.cat] || el.cat;
+    document.getElementById('info-metaltype').innerHTML = `<span style="color:${mtColor};">${mt}</span>`;
+    document.getElementById('info-periodgroup').textContent =
+        (el.period ? el.period + '주기' : '-') + ' / ' + (el.group ? el.group + '족' : '-');
+
+    if (fd) {
+        document.getElementById('info-flame').innerHTML =
+            `<span style="color:${fd.color};text-shadow:0 0 6px ${fd.color};">${fd.colorName}</span>`;
+        document.getElementById('info-desc').textContent = fd.desc;
+    } else {
+        document.getElementById('info-flame').textContent = '불꽃 반응 없음';
+        document.getElementById('info-desc').textContent = '이 원소는 특별한 불꽃 반응 색을 나타내지 않아요.';
+    }
+}
+
+function clearSparks() {
+    if (sparkInterval) { clearInterval(sparkInterval); sparkInterval = null; }
+    document.querySelectorAll('.spark').forEach(s => s.remove());
+}
+
+function resetAll() {
+    document.querySelectorAll('.element.selected').forEach(c => c.classList.remove('selected'));
+    const display = document.getElementById('flame-display');
+    display.classList.remove('active');
+    display.style.background = '#111';
+    display.style.removeProperty('--flame-color');
+    document.getElementById('flame-container').classList.remove('active');
+    document.getElementById('flame-info').style.display = 'none';
+    const dt = document.getElementById('default-text');
+    dt.style.display = 'block';
+    dt.textContent = '⬇ 주기율표에서 원소를 클릭하세요!';
+    clearSparks();
+    document.getElementById('info-panel').classList.remove('visible');
+}
+
+// =============================================
+// 초기화
+// =============================================
+document.addEventListener('DOMContentLoaded', () => {
+    buildFlameLegend();
+    buildFlameTable();
+    buildMetalChips();
+    buildCompareTable();
+    buildCategoryLegend();
+    buildGroupHeader();
+    buildPeriodicTable();
+    buildLanthanideRow();
+    buildActinideRow();
+    document.getElementById('reset-btn').addEventListener('click', resetAll);
+});
+</script>
+</body>
+</html>
+
